@@ -1,98 +1,101 @@
 package com.mnzit.learner.spring.spel.demospel;
 
-import com.mnzit.learner.spring.spel.demospel.data.Customer;
-import com.mnzit.learner.spring.spel.demospel.data.User;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
+import com.mnzit.learner.spring.spel.demospel.entities.Company;
+import com.mnzit.learner.spring.spel.demospel.entities.Employee;
 import org.springframework.context.ApplicationContext;
+import org.springframework.context.support.FileSystemXmlApplicationContext;
 import org.springframework.expression.EvaluationContext;
 import org.springframework.expression.Expression;
+import org.springframework.expression.ExpressionParser;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 /**
  * @author Manjit Shakya
  * @email manjit.shakya@f1soft.com
  */
 public class AppExpressionParser {
-    private static List<String> names;
-
-    @Autowired
-    private static ApplicationContext context;
-
-    //-Duser.language=ms -Duser.country=MY -Duser.timezone=Asia/Kuala_lumpur
-
-    static {
-        names = Arrays.asList("Manjit", "Mohan", "Aadarsh", "Biraj");
-    }
-    @Value("#{names}")
-    private static List<String> nameList = new ArrayList<>();
-
-    @Value("#{'John Doe'}")
-    public String name;
-
-
     public static void main(String[] args) {
+//        test1();
+//        test2();
+        test3();
+    }
+
+    public static void test1() {
+        EvaluationContext sec1 = new StandardEvaluationContext();
+        sec1.setVariable("name", "Manjit");
+        sec1.setVariable("age", 22);
+
+        ExpressionParser parser = new SpelExpressionParser();
+
+        Expression expression = parser.parseExpression("#name.concat(#age)");
+
+        String result = expression.getValue(sec1, String.class);
+
+        System.out.println(result);
+    }
+
+    public static void test2() {
+        ExpressionParser parser = new SpelExpressionParser();
+
+        Expression expression = parser.parseExpression("{name: 'roofus', animal: 'dog', lifeSpan: 12}");
+
+        Map result = expression.getValue(Map.class);
+
+        result.forEach((k, v) -> {
+            System.out.println("Key: " + k + ", Value: " + v);
+        });
+    }
+
+    public static void test3() {
+
+        List<Employee> employees = new ArrayList<>();
+        Employee employee = new Employee("Manjit", 12345);
+        employees.add(employee);
+        employee = new Employee("Manjit", 12349);
+        employees.add(employee);
+        employee = new Employee("Ranjit", 54321);
+        employees.add(employee);
+
+        Company company = new Company("Bajra", employees);
+
+        EvaluationContext sec1 = new StandardEvaluationContext(company);
+
         SpelExpressionParser parser = new SpelExpressionParser();
-        Expression exp1 = parser.parseExpression("'Hello World'");
-        String message = (String) exp1.getValue();
-        System.out.println(message);
 
-        Expression exp2 = parser.parseExpression("'Hello World'.length()");
-        System.out.println(exp2.getValue());
+        /**
+         * You can use the .^[] for selecting the first match
+         */
+        Employee resultEmployee = parser.parseRaw("employees.^[name == 'Manjit']").getValue(sec1, Employee.class);
 
-        Expression exp3 = parser.parseExpression("'Hello World'.length() * 10");
-        System.out.println(exp3.getValue());
-
-        Expression exp4 = parser.parseExpression("'Hello World'.length() > 10");
-        System.out.println(exp4.getValue());
-
-        Expression exp5 = parser.parseExpression("'Hello World'.length() > 10 and 'Hello World'.length() == 11");
-        System.out.println(exp5.getValue());
-
-        EvaluationContext ec1 = new StandardEvaluationContext();
-
-        ec1.setVariable("greeting", "Hello UK");
-
-        String msg1 = (String) parser.parseExpression("#greeting.substring(6)").getValue(ec1);
-
-        System.out.println(msg1);
-
-        System.out.println("#####################################");
-
-        User user = new User();
-        EvaluationContext userContext = new StandardEvaluationContext(user);
-
-        parser.parseExpression("country").setValue(userContext, "USA");
-        System.out.println(user.getCountry());
-
-        parser.parseExpression("language").setValue(userContext, "en");
-        System.out.println(user.getLanguage());
-
-        parser.parseExpression("timeZone").setValue(userContext, "America/New_York");
-        System.out.println(user.getTimeZone());
+        System.out.println("First Matched=======================");
+        System.out.println("Name of employee : " + resultEmployee.getName());
+        System.out.println("Employee telephone num : " + resultEmployee.getTelNo());
 
 
-        EvaluationContext propsContext = new StandardEvaluationContext();
-        propsContext.setVariable("systemProperties", System.getProperties());
+        /**
+         * .$[] operator to select the last match items from collection respectively.
+         */
+        resultEmployee = parser.parseRaw("employees.$[name == 'Manjit']").getValue(sec1, Employee.class);
 
-        Expression expCountry = parser.parseExpression("#systemProperties['user.country']");
-        parser.parseExpression("country").setValue(userContext, expCountry.getValue(propsContext));
-        System.out.println(user.getCountry());
+        System.out.println("Last Matched=======================");
+        System.out.println("Name of employee : " + resultEmployee.getName());
+        System.out.println("Employee telephone num : " + resultEmployee.getTelNo());
 
-        Expression expLanguage = parser.parseExpression("#systemProperties['user.language']");
-        parser.parseExpression("language").setValue(userContext, expLanguage.getValue(propsContext));
-        System.out.println(user.getLanguage());
 
-        Expression expTimeZone = parser.parseExpression("#systemProperties['user.timezone']");
-        parser.parseExpression("timeZone").setValue(userContext, expTimeZone.getValue(propsContext));
-        System.out.println(user.getTimeZone());
+        /**
+         * the filter operator which can be typed like .?[] Where you can define the filter criteria inside the braces.
+         */
+        List<Employee> list = parser.parseRaw("employees.?[name == 'Manjit']").getValue(sec1, List.class);
 
-        Customer obj = (Customer) context.getBean("customerBean");
-        System.out.println(obj);
+        System.out.println("All Matched=======================");
+        for (Employee emp : list) {
+            System.out.println("Name of employee : " + emp.getName());
+            System.out.println("Employee telephone num : " + emp.getTelNo());
+        }
     }
 }
