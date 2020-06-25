@@ -12,6 +12,10 @@ public class Employee {
     public String name;
     public int telNo;
 
+    public Employee() {
+
+    }
+
 
     public String getName() {
         return name;
